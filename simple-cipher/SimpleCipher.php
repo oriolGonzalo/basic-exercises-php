@@ -14,7 +14,7 @@ class SimpleCipher
         $characters = 'abcdefghijklmnopqrstuvwxyz';
         $random = [];
         for ($i = 0; $i < $length; $i++) {
-            $random[$i] = $characters[mt_rand(0, strlen($characters) - 1)];
+            $random[$i] = $characters[mt_rand(0, mb_strlen($characters) - 1)];
         }
         return implode("", $random);
     }
@@ -41,56 +41,54 @@ class SimpleCipher
     private function getCipherValues (): array {
         $cipherValues = [];
 
-        foreach (str_split($this->key) as $index => $char) $cipherValues[$index] = ord($char) - self::LOWERCASE_LETTERS_BASE;
+        foreach (mb_str_split($this->key) as $index => $char) $cipherValues[$index] = ord($char) - self::LOWERCASE_LETTERS_BASE;
 
         return $cipherValues;
     }
 
     private function isEncodedCharALetter (int $charToEncodeValue, int $encodingValue): bool {
-        if ($charToEncodeValue + $encodingValue <= self::NUM_OF_LETTERS_IN_ALPHABET) return true;
-
-        return false;
+        return ($charToEncodeValue + $encodingValue <= self::NUM_OF_LETTERS_IN_ALPHABET);
     }
 
     private function encodeChar (int $charToEncodeValue, int $encodingValue): string {
         $encodedCharIsALetter = $this->isEncodedCharALetter($charToEncodeValue, $encodingValue);
             
-        if ($encodedCharIsALetter) return chr($charToEncodeValue + $encodingValue + self::LOWERCASE_LETTERS_BASE);
-        
+        if ($encodedCharIsALetter) {
+            return chr($charToEncodeValue + $encodingValue + self::LOWERCASE_LETTERS_BASE);
+        }
         return chr($charToEncodeValue + $encodingValue - self::RESET_LOWERCASE_LETTERS_RANGE + self::LOWERCASE_LETTERS_BASE);
     }
 
-    private function isDecodedCharALetter (int $charToDecodeValue, int $encodingValue): bool {
-        if ($charToDecodeValue - $encodingValue >= 0) return true;
-        
-        return false;
+    private function isDecodedCharALetter (int $charToDecodeValue, int $encodingValue): bool {        
+        return ($charToDecodeValue - $encodingValue >= 0);
     }
 
     private function decodeChar (int $charToDecodeValue, int $encodingValue) {
         $decodedCharIsALetter = $this->isDecodedCharALetter($charToDecodeValue, $encodingValue);
 
-        if ($decodedCharIsALetter) return chr($charToDecodeValue - $encodingValue + self::LOWERCASE_LETTERS_BASE);
-        
+        if ($decodedCharIsALetter) {
+            return chr($charToDecodeValue - $encodingValue + self::LOWERCASE_LETTERS_BASE);
+        }
         return chr($charToDecodeValue - $encodingValue + self::RESET_LOWERCASE_LETTERS_RANGE + self::LOWERCASE_LETTERS_BASE);
     }
 
-    public function operateOn (string $UnprocessedText, string $operation) {
+    public function operateOn (string $UnprocessedText, $function) {
         $processedText = '';
         $cipherValues = $this->getCipherValues();
         
-        foreach (str_split($UnprocessedText) as $index => $charToProcess) {
+        foreach (mb_str_split($UnprocessedText) as $index => $charToProcess) {
             $charToProcessValue = ord($charToProcess) - self::LOWERCASE_LETTERS_BASE;
-            $processedChar = call_user_func(array($this, $operation), $charToProcessValue, $cipherValues[$index]);
+            $processedChar = $function($charToProcessValue, $cipherValues[$index]);
             $processedText = $processedText . $processedChar;
         }
         return $processedText;
     }
 
     public function encode(string $plainText): string {    
-        return $this->operateOn($plainText, 'encodeChar');
+        return $this->operateOn($plainText, fn ($a, $b) => $this->encodeChar($a, $b));
     }
 
     public function decode(string $cipherText): string {
-        return $this->operateOn($cipherText, 'decodeChar');
+        return $this->operateOn($cipherText, fn ($a, $b) => $this->decodeChar($a, $b));
     }
 }
